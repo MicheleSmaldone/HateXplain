@@ -72,6 +72,13 @@ def encodeData(dataframe,vocab,params):
                     index=vocab.stoi['unk']
                 list_token_id.append(index)
             tuple_new_data.append((list_token_id,row['Attention'],row['Label']))
+    ## ADDED CODE
+    with open('stoi.json', 'w') as f:
+        json.dump(vocab.stoi, f)
+
+    with open('itos.json', 'w') as f:
+        json.dump(vocab.itos, f)
+    ##END ADDED CODE
     return tuple_new_data
 
 
@@ -146,4 +153,4 @@ def createDatasetSplit(params):
         return X_train,X_val,X_test,vocab_own
     else:
         return X_train,X_val,X_test
-              
+    

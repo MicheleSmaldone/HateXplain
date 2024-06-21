@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import pandas as pd
 from Models.attentionLayer import *
 from .utils import masked_cross_entropy
 debug =False
@@ -48,12 +49,29 @@ class BiRNN(nn.Module):
             hidden=hidden[0]
         else:
             _, hidden = self.seq_model(h_embedding)
-            
+
+##START ADDED CODE
+	
+##INPUTS
+       ## input_ids_np = input_ids.detach().cpu().numpy()
+       ## df_input_ids = pd.DataFrame(input_ids_np)
+       ## df_input_ids.to_csv("input_ids.csv", mode='a', header=False, index=False)
+##HIDDEN
+        hidden_np = hidden.detach().cpu().numpy()
+        print("HIDDEN_NP.SHAPE BEFORE:",hidden_np.shape)
+        df_hidden = pd.DataFrame(hidden_np.reshape(-1, hidden_np.shape[-1]))
+        print("HIDDEN_NP.SHAPE AFTER:",hidden_np.shape)
+        ## df_hidden.to_csv("hidden.csv", mode='a', header=False, index=False)
+##END ADDED CODE
+       
         if(debug):
             print(hidden.shape)
+        print("Shape1:",hidden.shape)
         hidden = hidden.transpose(0, 1).contiguous().view(batch_size, -1) 
+        print("Shape2:",hidden.shape)
         hidden = self.dropout_fc(hidden)
         hidden = torch.relu(self.linear1(hidden))  #batch x hidden_size
+        print("Shape3:",hidden.shape)
         hidden = self.dropout_fc(hidden)
         logits = self.linear2(hidden)
         if labels is not None:
