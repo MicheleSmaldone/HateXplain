@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from Models.attentionLayer import *
 from .utils import masked_cross_entropy
-debug =False
+debug =True
 #### BiGRUCLassifier model
 
 def global_max_pooling(tensor, dim, topk):

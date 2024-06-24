@@ -40,7 +40,7 @@ class Attention(nn.Module):
         
         eij = torch.tanh(eij)
         
-        eij[~mask] = float('-inf')
+        eij[~mask.bool()] = float('-inf')
         a=torch.softmax(eij, dim=1)
         
 #         a = torch.exp(eij)
@@ -118,7 +118,8 @@ class Attention_LBSA(nn.Module):
 
 #         a = a /(torch.sum(a, 1, keepdim=True) + 1e-10)
 
-        eij[~mask] = float('-inf')
+
+        eij[~mask.bool()] = float('-inf')
         a=torch.softmax(eij, dim=1)
         
         if(debug):

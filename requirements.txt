@@ -12,8 +12,8 @@ matplotlib==3.2.1
 gensim==3.8.1
 neptune_client==0.4.107
 knockknock==0.1.7
-torch==1.1.0
+torch==1.13.1
 apex==0.9.10dev
-dataclasses==0.8
+dataclasses
 GPUtil==1.4.0
 scikit_learn==0.23.2
