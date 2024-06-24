@@ -1,4 +1,4 @@
-from transformers.modeling_bert import *
+from transformers import BertPreTrainedModel, BertModel
 from .utils import masked_cross_entropy
 
 
