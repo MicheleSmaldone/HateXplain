@@ -124,7 +124,7 @@ class modelPred():
             self.model.cuda()
         self.model.eval()
     
-    def return_probab(self,sentences_list):
+    def return_probab(self,sentences_list, ids_list=None, labels_list=None):
         """Input: should be a list of sentences"""
         """Ouput: probablity values"""
         params=self.params
@@ -138,17 +138,17 @@ class modelPred():
 
 
         temp_read=transform_dummy_data(sentences_list)
+        if ids_list is not None: temp_read['post_id'] = ids_list
+        if labels_list is not None: temp_read['final_label'] = labels_list
         test_data=get_test_data(temp_read,params,message='text')
         test_extra=encodeData(test_data,self.vocab,params)
         test_dataloader=combine_features(test_extra,params,is_train=False)
-
-
-        
+#ADDED CODE
+        post_id_all = list(test_data['Post_id'])
+#END ADDED CODE
         # Put the model in evaluation mode--the dropout layers behave differently
         # during evaluation.
         # Tracking variables
-        post_id_all=list(test_data['Post_id'])
-
         print("Running eval on test data...")
         t0 = time.time()
         true_labels=[]
@@ -156,6 +156,8 @@ class modelPred():
         logits_all=[]
         #attention_all=[]
         input_mask_all=[]
+        sentences_all=[]
+        post_ids_all=[]
 
         # Evaluate data for one epoch
         for step,batch in enumerate(test_dataloader):
@@ -175,6 +177,7 @@ class modelPred():
             b_att_val = batch[1].to(device)
             b_input_mask = batch[2].to(device)
             b_labels = batch[3].to(device)
+            print('b_labels:', b_labels)
 
 
             # (source: https://stackoverflow.com/questions/48001598/why-do-we-need-to-call-zero-grad-in-pytorch)
@@ -188,8 +191,16 @@ class modelPred():
             # Move logits and labels to CPU
             logits = logits.detach().cpu().numpy()
             label_ids = b_labels.detach().cpu().numpy()
-
-    
+            print('label ids: ', label_ids)
+#ADDED CODE
+       
+            start_index = step * params['batch_size']
+            end_index = min((step + 1) * params['batch_size'], len(sentences_list))
+            sentences_batch = sentences_list[start_index:end_index]
+            post_ids_batch = post_id_all[start_index:end_index]
+            sentences_all.extend(sentences_batch)
+            post_ids_all.extend(post_ids_batch)
+#END ADDED
 
             # Calculate the accuracy for this batch of test sentences.
             # Accumulate the total accuracy.
@@ -204,11 +215,56 @@ class modelPred():
         for logits in logits_all:
             logits_all_final.append(list(softmax(logits)))
 
+#ADDED CODE
+
+        encoder = LabelEncoder()
+        encoder.classes_ = np.load('Data/classes.npy')
+        true_labels_str = encoder.inverse_transform(true_labels)
+        print(f"String true labels: {true_labels_str}")
+        print(f"int true labels: {true_labels}")
+
+        if not os.path.exists('sentencelabels.csv'):
+            with open('sentencelabels.csv', 'w') as f:
+                f.write('post_id,sentence,true_label,logits')
+        with open('sentencelabels.csv', 'a') as f:
+            for i in range(len(post_ids_all)):
+                f.write(str(post_ids_all[i]) + ',')
+                f.write(str(sentences_all[i]) + ',')
+                f.write(str(true_labels_str[i]) + ',')
+                f.write(str(logits_all[i]) + '\n')
+
+#END ADDED
+
         return np.array(logits_all_final)
 
 
 # In[ ]:
 
+
+def save_hidden_states_for_visualization(params, model_to_use, test_data=None, topk=2,rational=False):
+    encoder = LabelEncoder()
+    encoder.classes_ = np.load('Data/classes.npy')
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False)
+    
+    list_dict=[]
+    
+    modelClass=modelPred(model_to_use,params)
+
+    for index,row in test_data.iterrows():
+        if(row['Label']=='normal'):
+            continue
+        if(params['bert_tokens']):
+            tokens=tokenizer.convert_ids_to_tokens(row['Text'])[1:-1]
+            sentence=tokenizer.convert_tokens_to_string(tokens)
+        else:
+            tokens=row['Text']
+            sentence= " ".join(tokens)
+            
+        temp={}
+
+        prob = modelClass.return_probab([sentence], ids_list=row['Post_id'], labels_list=row['Label'])
+
+    
 
 
 def standaloneEval_with_lime(params, model_to_use,test_data=None,topk=2,rational=False):
@@ -248,7 +304,6 @@ def standaloneEval_with_lime(params, model_to_use,test_data=None,topk=2,rational
     
     
     else:
-        
         for index,row in tqdm(test_data.iterrows(),total=len(test_data)):
             if(row['Label']=='normal'):
                 continue
@@ -393,11 +448,13 @@ if __name__=='__main__':
     params['device']='cpu'
     fix_the_random(seed_val = params['random_seed'])
     test_data=get_test_data(temp_read,params,message='text')
-    final_dict=get_final_dict_with_lime(params,model_to_use,test_data,topk=5)
-    path_name=model_dict_params[model_to_use]
-    path_name_explanation='explanations_dicts/'+path_name.split('/')[1].split('.')[0]+'_explanation_with_lime_'+str(params['num_samples'])+'_'+str(params['att_lambda'])+'.json'
-    with open(path_name_explanation, 'w') as fp:
-        fp.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in final_dict))
+    
+    save_hidden_states_for_visualization(params, model_to_use, test_data, topk=5,rational=False)
+    #final_dict=get_final_dict_with_lime(params,model_to_use,test_data,topk=5)
+    #path_name=model_dict_params[model_to_use]
+    #path_name_explanation='explanations_dicts/'+path_name.split('/')[1].split('.')[0]+'_explanation_with_lime_'+str(params['num_samples'])+'_'+str(params['att_lambda'])+'.json'
+    #with open(path_name_explanation, 'w') as fp:
+    #    fp.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in final_dict))
 
 
 # In[ ]:

@@ -61,7 +61,7 @@ class BiRNN(nn.Module):
         print("HIDDEN_NP.SHAPE BEFORE:",hidden_np.shape)
         df_hidden = pd.DataFrame(hidden_np.reshape(-1, hidden_np.shape[-1]))
         print("HIDDEN_NP.SHAPE AFTER:",hidden_np.shape)
-        ## df_hidden.to_csv("hidden.csv", mode='a', header=False, index=False)
+        df_hidden.to_csv("hidden.csv", mode='a', header=False, index=False)
 ##END ADDED CODE
        
         if(debug):
