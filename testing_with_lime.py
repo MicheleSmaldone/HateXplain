@@ -245,14 +245,13 @@ def save_hidden_states_for_visualization(params, model_to_use, test_data=None, t
     encoder = LabelEncoder()
     encoder.classes_ = np.load('Data/classes.npy')
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False)
+
     
     list_dict=[]
     
     modelClass=modelPred(model_to_use,params)
 
     for index,row in test_data.iterrows():
-        if(row['Label']=='normal'):
-            continue
         if(params['bert_tokens']):
             tokens=tokenizer.convert_ids_to_tokens(row['Text'])[1:-1]
             sentence=tokenizer.convert_tokens_to_string(tokens)
