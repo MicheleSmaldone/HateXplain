@@ -225,7 +225,7 @@ class modelPred():
 
         if not os.path.exists('sentencelabels.csv'):
             with open('sentencelabels.csv', 'w') as f:
-                f.write('post_id,sentence,true_label,logits')
+                f.write('post_id,sentence,true_label,logits\n')
         with open('sentencelabels.csv', 'a') as f:
             for i in range(len(post_ids_all)):
                 f.write(str(post_ids_all[i]) + ',')
