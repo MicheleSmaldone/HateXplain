@@ -1,0 +1,47 @@
+{
+  "os": "Linux-6.5.0-45-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.12",
+  "startedAt": "2025-05-07T10:16:52.448197Z",
+  "args": [
+    "./best_model_json/bestModel_bert_base_uncased_Attn_train_FALSE.json",
+    "false",
+    "0.001"
+  ],
+  "program": "/pvc/home/HateXplain/manual_training_inference.py",
+  "codePath": "manual_training_inference.py",
+  "git": {
+    "remote": "https://github.com/MicheleSmaldone/HateXplain.git",
+    "commit": "d63adfd4bc124112b1636ffc7c26f445984b7ee9"
+  },
+  "email": "michelesmaldone02@gmail.com",
+  "root": "/pvc/home/HateXplain",
+  "host": "job-f082b423b3e4-0-0",
+  "executable": "/usr/bin/python",
+  "codePathLocal": "manual_training_inference.py",
+  "cpu_count": 28,
+  "cpu_count_logical": 56,
+  "gpu": "Tesla V100-SXM2-32GB",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "6399114346496",
+      "used": "1814488768512"
+    }
+  },
+  "memory": {
+    "total": "404287180800"
+  },
+  "cpu": {
+    "count": 28,
+    "countLogical": 56
+  },
+  "gpu_nvidia": [
+    {
+      "name": "Tesla V100-SXM2-32GB",
+      "memoryTotal": "34359738368",
+      "cudaCores": 5120,
+      "architecture": "Volta"
+    }
+  ],
+  "cudaVersion": "12.4"
+}
