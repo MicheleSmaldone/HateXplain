@@ -1,0 +1,26 @@
+# environment-prod.yml
+name: hxp-docker
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.10
+  - cudatoolkit=<your-cuda-version>
+  - pytorch>=2.2.0
+  - torchvision
+  - transformers>=4.39.3
+  - tokenizers
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - tqdm
+  - gensim
+  - ekphrasis
+  - spacy
+  - spacy-models/en_core_web_sm
+  - GPUtil
+  - knockknock
+  - waiting
+  - pip
+

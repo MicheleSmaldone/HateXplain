@@ -1,9 +1,15 @@
 ### This is run when you want to select the parameters from the parameters file
 import transformers 
 import torch
-import neptune
+#import neptune
 from knockknock import slack_sender
-from transformers import *
+from transformers import (
+    BertTokenizer,
+    BertForSequenceClassification,
+    AdamW,
+    BertConfig,
+    get_linear_schedule_with_warmup
+)
 import glob 
 from transformers import BertTokenizer
 from transformers import BertForSequenceClassification, AdamW, BertConfig
@@ -35,6 +41,7 @@ import threading
 import argparse
 import ast
 
+import wandb
 
 
 def softmax(x):
@@ -164,7 +171,7 @@ def Eval_phase(params,which_files='test',model=None,test_dataloader=None,device=
     testprecision=precision_score(true_labels, pred_labels, average='macro')
     testrecall=recall_score(true_labels, pred_labels, average='macro')
     
-    if(params['logging']!='neptune' or params['is_model'] == True):
+    if(params['logging']!='_no_neptune_addedbysmaldo' or params['is_model'] == True):
         # Report the final accuracy for this validation run.
         print(" Accuracy: {0:.2f}".format(testacc))
         print(" Fscore: {0:.2f}".format(testf1))
@@ -177,22 +184,24 @@ def Eval_phase(params,which_files='test',model=None,test_dataloader=None,device=
         bert_model = params['path_files']
         language  = params['language']
         name_one=bert_model+"_"+language
-        neptune.create_experiment(name_one,params=params,send_hardware_metrics=False,run_monitoring_thread=False)
-        neptune.append_tag(bert_model)
-        neptune.append_tag(language)
-        neptune.append_tag('test')
-        neptune.log_metric('test_f1score',testf1)
-        neptune.log_metric('test_accuracy',testacc)
-        neptune.log_metric('test_precision',testprecision)
-        neptune.log_metric('test_recall',testrecall)
-        neptune.log_metric('test_rocauc',testrocauc)
-        neptune.stop()
+        # neptune.create_experiment(name_one,params=params,send_hardware_metrics=False,run_monitoring_thread=False)
+        # neptune.append_tag(bert_model)
+        # neptune.append_tag(language)
+        # neptune.append_tag('test')
+        # neptune.log_metric('test_f1score',testf1)
+        # neptune.log_metric('test_accuracy',testacc)
+        # neptune.log_metric('test_precision',testprecision)
+        # neptune.log_metric('test_recall',testrecall)
+        # neptune.log_metric('test_rocauc',testrocauc)
+        # neptune.stop()
 
     return testf1,testacc,testprecision,testrecall,testrocauc,logits_all_final
 
     
     
 def train_model(params,device):
+    wandb.init(project="HateXplain", config=params)
+
     embeddings=None
     if(params['bert_tokens']):
         train,val,test=createDatasetSplit(params)
@@ -206,7 +215,12 @@ def train_model(params,device):
 #         print(y_test)
         encoder = LabelEncoder()
         encoder.classes_ = np.load(params['class_names'],allow_pickle=True)
-        params['weights']=class_weight.compute_class_weight('balanced',np.unique(y_test),y_test).astype('float32') 
+        #params['weights']=class_weight.compute_class_weight('balanced',np.unique(y_test),y_test).astype('float32') 
+        params['weights'] = class_weight.compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(y_test),
+            y=y_test
+        ).astype('float32')
         #params['weights']=np.array([len(y_test)/y_test.count(encoder.classes_[0]),len(y_test)/y_test.count(encoder.classes_[1]),len(y_test)/y_test.count(encoder.classes_[2])]).astype('float32') 
         
         
@@ -218,7 +232,7 @@ def train_model(params,device):
    
     model=select_model(params,embeddings)
     
-    if(params["device"]=='cuda'):
+    if(params["device"]=='cuda') and torch.cuda.is_available():
         param_size = 0
         for param in model.parameters():
             param_size += param.nelement() * param.element_size()
@@ -254,15 +268,15 @@ def train_model(params,device):
     else:
         name_one=params['model_name']
         
-    if(params['logging']=='neptune'):
-        neptune.create_experiment(name_one,params=params,send_hardware_metrics=False,run_monitoring_thread=False)
+    #if(params['logging']=='no'):
+        # neptune.create_experiment(name_one,params=params,send_hardware_metrics=False,run_monitoring_thread=False)
         
-        neptune.append_tag(name_one)
-        if(params['best_params']):
-            neptune.append_tag('AAAI final best')
-        else:
-            neptune.append_tag('AAAI final')
-        
+        # neptune.append_tag(name_one)
+            # if(params['best_params']):
+            #     # neptune.append_tag('AAAI final best')
+            # else:
+            #     # neptune.append_tag('AAAI final')
+            
     best_val_fscore=0
     best_test_fscore=0
 
@@ -320,8 +334,8 @@ def train_model(params,device):
             
             loss = outputs[0]
            
-            if(params['logging']=='neptune'):
-            	neptune.log_metric('batch_loss',loss.item())
+            #if(params['logging']=='no'):
+            	# neptune.log_metric('batch_loss',loss.item())
             # Accumulate the training loss over all of the batches so that we can
             # calculate the average loss at the end. `loss` is a Tensor containing a
             # single value; the `.item()` function just returns the Python value 
@@ -343,10 +357,10 @@ def train_model(params,device):
                 scheduler.step()
         # Calculate the average loss over the training data.
         avg_train_loss = total_loss / len(train_dataloader)
-        if(params['logging']=='neptune'):
-            neptune.log_metric('avg_train_loss',avg_train_loss)
-        else:
-            print('avg_train_loss',avg_train_loss)
+        #if(params['logging']=='no'):
+            # neptune.log_metric('avg_train_loss',avg_train_loss)
+        #else:
+        print('avg_train_loss',avg_train_loss)
 
         # Store the loss value for plotting the learning curve.
         loss_values.append(avg_train_loss)
@@ -354,28 +368,37 @@ def train_model(params,device):
         val_fscore,val_accuracy,val_precision,val_recall,val_roc_auc,_=Eval_phase(params,'val',model,validation_dataloader,device)
         test_fscore,test_accuracy,test_precision,test_recall,test_roc_auc,logits_all_final=Eval_phase(params,'test',model,test_dataloader,device)
 
+        wandb.log({
+            "epoch": epoch_i+1,
+            "train_loss": avg_train_loss,
+            "train_f1": train_fscore,
+            "train_acc": train_accuracy,
+            "val_f1":   val_fscore,
+            "val_acc":  val_accuracy,
+            "test_f1":  test_fscore,
+            "test_acc": test_accuracy
+        })
         #Report the final accuracy for this validation run.
-        if(params['logging']=='neptune'):	
-            neptune.log_metric('test_fscore',test_fscore)
-            neptune.log_metric('test_accuracy',test_accuracy)
-            neptune.log_metric('test_precision',test_precision)
-            neptune.log_metric('test_recall',test_recall)
-            neptune.log_metric('test_rocauc',test_roc_auc)
+        #if(params['logging']=='no'):	
+            # neptune.log_metric('test_fscore',test_fscore)
+            # neptune.log_metric('test_accuracy',test_accuracy)
+            # neptune.log_metric('test_precision',test_precision)
+            # neptune.log_metric('test_recall',test_recall)
+            # neptune.log_metric('test_rocauc',test_roc_auc)
             
-            neptune.log_metric('val_fscore',val_fscore)
-            neptune.log_metric('val_accuracy',val_accuracy)
-            neptune.log_metric('val_precision',val_precision)
-            neptune.log_metric('val_recall',val_recall)
-            neptune.log_metric('val_rocauc',val_roc_auc)
+            # neptune.log_metric('val_fscore',val_fscore)
+            # neptune.log_metric('val_accuracy',val_accuracy)
+            # neptune.log_metric('val_precision',val_precision)
+            # neptune.log_metric('val_recall',val_recall)
+            # neptune.log_metric('val_rocauc',val_roc_auc)
     
-            neptune.log_metric('train_fscore',train_fscore)
-            neptune.log_metric('train_accuracy',train_accuracy)
-            neptune.log_metric('train_precision',train_precision)
-            neptune.log_metric('train_recall',train_recall)
-            neptune.log_metric('train_rocauc',train_roc_auc)
+            # neptune.log_metric('train_fscore',train_fscore)
+            # neptune.log_metric('train_accuracy',train_accuracy)
+            # neptune.log_metric('train_precision',train_precision)
+            # neptune.log_metric('train_recall',train_recall)
+            # neptune.log_metric('train_rocauc',train_roc_auc)
 
-            
-        
+
     
         if(val_fscore > best_val_fscore):
             print(val_fscore,best_val_fscore)
@@ -398,27 +421,29 @@ def train_model(params,device):
                 print("Saving model")
                 save_normal_model(model,params)
 
-    if(params['logging']=='neptune'):
-        neptune.log_metric('best_val_fscore',best_val_fscore)
-        neptune.log_metric('best_test_fscore',best_test_fscore)
-        neptune.log_metric('best_val_rocauc',best_val_roc_auc)
-        neptune.log_metric('best_test_rocauc',best_test_roc_auc)
-        neptune.log_metric('best_val_precision',best_val_precision)
-        neptune.log_metric('best_test_precision',best_test_precision)
-        neptune.log_metric('best_val_recall',best_val_recall)
-        neptune.log_metric('best_test_recall',best_test_recall)
+    #if(params['logging']=='no'):
+        # neptune.log_metric('best_val_fscore',best_val_fscore)
+        # neptune.log_metric('best_test_fscore',best_test_fscore)
+        # neptune.log_metric('best_val_rocauc',best_val_roc_auc)
+        # neptune.log_metric('best_test_rocauc',best_test_roc_auc)
+        # neptune.log_metric('best_val_precision',best_val_precision)
+        # neptune.log_metric('best_test_precision',best_test_precision)
+        # neptune.log_metric('best_val_recall',best_val_recall)
+        # neptune.log_metric('best_test_recall',best_test_recall)
         
-        neptune.stop()
-    else:
-        print('best_val_fscore',best_val_fscore)
-        print('best_test_fscore',best_test_fscore)
-        print('best_val_rocauc',best_val_roc_auc)
-        print('best_test_rocauc',best_test_roc_auc)
-        print('best_val_precision',best_val_precision)
-        print('best_test_precision',best_test_precision)
-        print('best_val_recall',best_val_recall)
-        print('best_test_recall',best_test_recall)
-        
+        # neptune.stop()
+    #else:
+    print('best_val_fscore',best_val_fscore)
+    print('best_test_fscore',best_test_fscore)
+    print('best_val_rocauc',best_val_roc_auc)
+    print('best_test_rocauc',best_test_roc_auc)
+    print('best_val_precision',best_val_precision)
+    print('best_test_precision',best_test_precision)
+    print('best_val_recall',best_val_recall)
+    print('best_test_recall',best_test_recall)
+    
+    wandb.finish()
+
     del model
     torch.cuda.empty_cache()
     return 1
@@ -556,10 +581,10 @@ if __name__=='__main__':
         params['best_params']=True 
     ##### change in logging to output the results to neptune
     params['logging']='local'
-    if(params['logging']=='neptune'):
+    if(params['logging']=='no'):
         from api_config import project_name,api_token
-        neptune.init(project_name,api_token=api_token)
-        neptune.set_project(project_name)
+        # neptune.init(project_name,api_token=api_token)
+        # neptune.set_project(project_name)
     torch.autograd.set_detect_anomaly(True)
     if torch.cuda.is_available() and params['device']=='cuda':    
         # Tell PyTorch to use the GPU.    

@@ -1,0 +1,134 @@
+_wandb:
+    value:
+        cli_version: 0.19.10
+        m: []
+        python_version: 3.10.16
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 33
+                - 49
+                - 53
+                - 55
+            "2":
+                - 1
+                - 5
+                - 11
+                - 33
+                - 49
+                - 53
+                - 55
+            "3":
+                - 16
+                - 23
+                - 55
+            "4": 3.10.16
+            "5": 0.19.10
+            "6": 4.39.3
+            "8":
+                - 5
+            "12": 0.19.10
+            "13": linux-x86_64
+alpha:
+    value: 0.5
+att_lambda:
+    value: 0.001
+attention:
+    value: softmax
+auto_weights:
+    value: true
+batch_size:
+    value: 16
+bert_tokens:
+    value: false
+best_params:
+    value: false
+class_names:
+    value: Data/classes.npy
+data_file:
+    value: Data/dataset.json
+decay:
+    value: false
+device:
+    value: cuda
+drop_embed:
+    value: 0.2
+drop_fc:
+    value: 0.2
+drop_hidden:
+    value: 0.1
+dropout_bert:
+    value: N/A
+embed_size:
+    value: 0
+embeddings:
+    value: null
+epochs:
+    value: 5
+epsilon:
+    value: 1e-08
+hidden_size:
+    value: 64
+include_special:
+    value: false
+is_model:
+    value: true
+learning_rate:
+    value: 0.1
+logging:
+    value: local
+majority:
+    value: 2
+max_length:
+    value: 128
+method:
+    value: additive
+model_name:
+    value: birnnscrat
+normalized:
+    value: false
+not_recollect:
+    value: true
+num_classes:
+    value: 3
+num_supervised_heads:
+    value: N/A
+p_value:
+    value: 0.8
+padding_idx:
+    value: 0
+path_files:
+    value: N/A
+random_seed:
+    value: 42
+save_only_bert:
+    value: N/A
+seq_model:
+    value: gru
+set_decay:
+    value: 0.1
+supervised_layer_pos:
+    value: N/A
+to_save:
+    value: true
+train_att:
+    value: true
+train_embed:
+    value: false
+type_attention:
+    value: softmax
+variance:
+    value: 1
+vocab_size:
+    value: 0
+weights:
+    value:
+        - 1
+        - 1
+        - 1
+what_bert:
+    value: N/A
+window:
+    value: 4

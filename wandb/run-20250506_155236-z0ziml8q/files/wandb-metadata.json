@@ -1,0 +1,36 @@
+{
+  "os": "Linux-6.8.0-59-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.16",
+  "startedAt": "2025-05-06T13:52:36.617695Z",
+  "args": [
+    "./best_model_json/bestModel_bert_base_uncased_Attn_train_FALSE.json",
+    "false",
+    "0.001"
+  ],
+  "program": "/home/smaldone/HateXplain/manual_training_inference.py",
+  "codePath": "manual_training_inference.py",
+  "git": {
+    "remote": "git@github.com:samgoree/HateXplain.git",
+    "commit": "8a817d3d85a1488c331b4f72c5041d5dc42f3308"
+  },
+  "email": "michelesmaldone02@gmail.com",
+  "root": "/home/smaldone/HateXplain",
+  "host": "haas001",
+  "executable": "/home/smaldone/miniconda3/envs/py10-hxp/bin/python",
+  "codePathLocal": "manual_training_inference.py",
+  "cpu_count": 48,
+  "cpu_count_logical": 96,
+  "disk": {
+    "/": {
+      "total": "940677435392",
+      "used": "17393913856"
+    }
+  },
+  "memory": {
+    "total": "540716335104"
+  },
+  "cpu": {
+    "count": 48,
+    "countLogical": 96
+  }
+}
