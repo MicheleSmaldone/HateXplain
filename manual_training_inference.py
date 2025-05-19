@@ -459,7 +459,8 @@ def train_model(params,device):
 params_data={
     'include_special':False, 
     'bert_tokens':False,
-    'type_attention':'softmax',
+    #'type_attention':'softmax',
+    'type_attention':'sparsemax',
     'set_decay':0.1,
     'majority':2,
     'max_length':128,

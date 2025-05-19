@@ -21,6 +21,27 @@ def sigmoid(z):
       g = 1 / (1 + exp(-z))
       return g
 
+def sparsemax(z):
+    """Sparsemax: https://arxiv.org/abs/1602.02068"""
+    z = np.asarray(z)
+    z = z - np.max(z)  # numerical stability
+
+    z_sorted = np.sort(z)[::-1]
+    z_cumsum = np.cumsum(z_sorted)
+    k_array = np.arange(1, len(z) + 1)
+    
+    # Find k such that z_sorted satisfies the sparsemax condition
+    k = np.where(z_sorted * k_array > (z_cumsum - 1))[0]
+    if len(k) == 0:
+        k_z = 1
+    else:
+        k_z = k[-1] + 1  # 1-based indexing
+
+    tau_sum = z_cumsum[k_z - 1]
+    tau = (tau_sum - 1) / k_z
+
+    return np.maximum(z - tau, 0)
+
 
 ##### This function is used to aggregate the attentions vectors. This has a lot of options refer to the parameters explanation for understanding each parameter.
 def aggregate_attention(at_mask,row,params):
@@ -47,6 +68,10 @@ def aggregate_attention(at_mask,row,params):
             at_mask_fin=int(params['variance'])*at_mask_fin
             at_mask_fin=np.mean(at_mask_fin,axis=0)
             at_mask_fin=neg_softmax(at_mask_fin)
+        elif (params['type_attention'] == 'sparsemax'):
+            at_mask_fin = int(params['variance']) * at_mask_fin
+            at_mask_fin = np.mean(at_mask_fin, axis=0)
+            at_mask_fin = sparsemax(at_mask_fin)
         elif(params['type_attention'] in ['raw','individual']):
             pass
     if(params['decay']==True):
