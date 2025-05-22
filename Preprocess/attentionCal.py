@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import array, exp
+import torch
 ###this file contain different attention mask calculation from the n masks from n annotators. In this code there are 3 annotators
 
 
