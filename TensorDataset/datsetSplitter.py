@@ -82,11 +82,17 @@ def createDatasetSplit(params):
     # # ────────────────────────────────────────────────────────────
 
     filename = set_name(params)
+    print("----------------------------------------")
+    print(">> Using data pickle:", filename)
+
     if not path.exists(filename):
         dataset = collect_data(params)
 
     # if precomputed folder exists, load picks
     cache_dir = filename[:-7]
+    print(">> Loading cached splits from:", cache_dir)
+    print("----------------------------------------")
+
     if path.exists(cache_dir):
         with open(os.path.join(cache_dir, 'train_data.pickle'), 'rb') as f:
             X_train = pickle.load(f)

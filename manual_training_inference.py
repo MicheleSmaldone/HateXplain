@@ -350,6 +350,9 @@ def train_model(params,device):
             # single value; the `.item()` function just returns the Python value 
             # from the tensor.
             total_loss += loss.item()
+            if step % 100 == 0:
+                print(f"[Epoch {epoch_i+1:>2} Step {step:>4}] "
+                        f" total={loss.item():.4f} ")
 
             # Perform a backward pass to calculate the gradients.
             loss.backward()
