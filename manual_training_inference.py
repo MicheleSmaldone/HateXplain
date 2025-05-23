@@ -205,8 +205,17 @@ def train_model(params,device):
     embeddings=None
     if(params['bert_tokens']):
         train,val,test=createDatasetSplit(params)
+        print("→ After createDatasetSplit:")
+        print("   train  examples:", len(train))
+        print("   val    examples:", len(val))
+        print("   test   examples:", len(test))
     else:
         train,val,test,vocab_own=createDatasetSplit(params)
+        print("→ After createDatasetSplit vocab_own:")
+        if 'vocab_own' in locals():
+            print("ocab_own:", vocab_own)
+        else:
+            print("   vocab_own was not unpacked here")
         params['embed_size']=vocab_own.embeddings.shape[1]
         params['vocab_size']=vocab_own.embeddings.shape[0]
         embeddings=vocab_own.embeddings
