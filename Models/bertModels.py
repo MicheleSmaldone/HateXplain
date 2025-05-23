@@ -401,7 +401,7 @@ class SC_weighted_BERT(BertPreTrainedModel):
                         mask=attention_mask,
                         reduction="mean"
                     )
-                    # we're getting 6
+
 
             # combine them:
             loss = cls_loss + loss_att
