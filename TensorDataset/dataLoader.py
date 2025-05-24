@@ -1,6 +1,6 @@
 # import torch
 # import transformers
-# #from keras.preprocessing.sequence import pad_sequences
+# from keras.preprocessing.sequence import pad_sequences
 # from torch.nn.utils.rnn import pad_sequence
 
 # from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
@@ -34,6 +34,14 @@
 #     labels = [ele [2] for ele in tuple_data]
     
    
+#     # --- DEBUG BLOCK: check raw attention vectors before padding ---
+#     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
+#     print("  sample raw att_vals_list[0][:10]:", att_vals[0][:10])
+#     print("  sum raw att_vals_list[0]:", sum(att_vals[0]))
+#     print("  dtype raw att_vals_list:", type(att_vals[0][0]))
+#     nonzero_counts = [sum(1 for x in v if x!=0) for v in att_vals[:5]]
+#     print("  nonzero count in first 5 samples:", nonzero_counts)
+#     # ------------------------------------------------------------------
 #     encoder = LabelEncoder()
     
 #     encoder.classes_ = np.load(params['class_names'],allow_pickle=True)
@@ -43,6 +51,14 @@
 #                           value=0, truncating="post", padding="post")
 #     att_vals = pad_sequences(att_vals,maxlen=int(params['max_length']), dtype="float", 
 #                           value=0.0, truncating="post", padding="post")
+    
+#     # --- DEBUG BLOCK: after padding ---
+#     print("  after padding att_vals[0][:10]:", att_vals[0][:10].tolist())
+#     print("  sum padded att_vals[0]:", att_vals[0].sum().item())
+#     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
+
+#     # ------------------------------------------------------------------
+
 #     att_masks=custom_att_masks(input_ids)
 #     dataloader=return_dataloader(input_ids,labels,att_vals,att_masks,params,is_train)
 #     return dataloader
@@ -59,28 +75,27 @@
 #         sampler = RandomSampler(data)
 #     dataloader = DataLoader(data, sampler=sampler, batch_size=params['batch_size'])
 #     return dataloader
+
+# ------------------------------------------------------------------------------------------------------------------------------------
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
-def pad_sequences(batch, max_len, padding_value=0):
-    """
-    batch: List[List[int]]  (each inner list is a token-ID sequence)
-    max_len: int            (the fixed length you want every example to be)
-    """
+import torch.nn.functional as F
+
+def pad_sequences(seqs, max_len, padding_value=0, dtype=torch.long):
     out = []
-    for seq in batch:
-        # truncate
-        seq_t = torch.tensor(seq, dtype=torch.long)[:max_len]
-        # pad on the right if needed
-        if seq_t.size(0) < max_len:
-            pad_amt = max_len - seq_t.size(0)
-            seq_t = F.pad(seq_t, (0, pad_amt), value=padding_value)
-        out.append(seq_t)
-    # stack into [batch_size, max_len]
+    for seq in seqs:
+        t = torch.tensor(seq, dtype=dtype)[:max_len]
+        if t.size(0) < max_len:
+            pad_amt = max_len - t.size(0)
+            t = F.pad(t, (0, pad_amt), value=padding_value)
+        out.append(t)
     return torch.stack(out, dim=0)
+
 
 def custom_att_masks(input_ids_tensor):
     """
@@ -98,6 +113,16 @@ def combine_features(tuple_data, params, is_train=False):
     att_vals_list  = [ele[1] for ele in tuple_data]
     labels_list    = [ele[2] for ele in tuple_data]
 
+
+    # --- DEBUG BLOCK: check raw attention vectors before padding ---
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
+    print("  sample raw att_vals_list[0][:10]:", att_vals_list[0][:10])
+    print("  sum raw att_vals_list[0]:", sum(att_vals_list[0]))
+    print("  dtype raw att_vals_list:", type(att_vals_list[0][0]))
+    nonzero_counts = [sum(1 for x in v if x!=0) for v in att_vals_list[:5]]
+    print("  nonzero count in first 5 samples:", nonzero_counts)
+    # ------------------------------------------------------------------
+
     # encode labels
     encoder = LabelEncoder()
     encoder.classes_ = np.load(params['class_names'], allow_pickle=True)
@@ -105,8 +130,26 @@ def combine_features(tuple_data, params, is_train=False):
 
     # pad everything to exactly max_length
     max_len = int(params['max_length'])
-    input_ids = pad_sequences(input_ids_list, max_len, padding_value=0)
-    att_vals  = pad_sequences(att_vals_list,  max_len, padding_value=0.0)
+    # input_ids = pad_sequences(input_ids_list, max_len, padding_value=0)
+    # att_vals  = pad_sequences(att_vals_list,  max_len, padding_value=0.0)
+
+    # pad token IDs
+    input_ids = pad_sequences(input_ids_list,
+                              max_len,
+                              padding_value=0,
+                              dtype=torch.long)
+    # pad attention values (must use float dtype!)
+    att_vals  = pad_sequences(att_vals_list,
+                              max_len,
+                              padding_value=0.0,
+                              dtype=torch.float)
+
+    # --- DEBUG BLOCK: after padding ---
+    print("  after padding att_vals[0][:10]:", att_vals[0][:10].tolist())
+    print("  sum padded att_vals[0]:", att_vals[0].sum().item())
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
+
+    # ------------------------------------------------------------------
 
     # build attention masks from the padded input_ids
     att_masks = custom_att_masks(input_ids)
