@@ -134,7 +134,8 @@ class modelPred():
             y_test = [ele[2] for ele in self.test] 
             encoder = LabelEncoder()
             encoder.classes_ = np.load('Data/classes.npy')
-            params['weights']=class_weight.compute_class_weight('balanced',np.unique(y_test),y_test).astype('float32')
+            #params['weights']=class_weight.compute_class_weight('balanced',np.unique(y_test),y_test).astype('float32')
+            params['weights'] = class_weight.compute_class_weight(class_weight='balanced', classes=np.unique(y_test), y=y_test).astype('float32')
 
 
         temp_read=transform_dummy_data(sentences_list)
@@ -446,15 +447,39 @@ if __name__=='__main__':
     params['variance']=1
     params['device']='cpu'
     fix_the_random(seed_val = params['random_seed'])
-    test_data=get_test_data(temp_read,params,message='text')
+    #test_data=get_test_data(temp_read,params,message='text')
+        # grab only the first 10 rows for a quick smoke test
+    test_data = get_test_data(temp_read, params, message='text').iloc[:3].reset_index(drop=True)
+
     
     save_hidden_states_for_visualization(params, model_to_use, test_data, topk=5,rational=False)
-    #final_dict=get_final_dict_with_lime(params,model_to_use,test_data,topk=5)
-    #path_name=model_dict_params[model_to_use]
-    #path_name_explanation='explanations_dicts/'+path_name.split('/')[1].split('.')[0]+'_explanation_with_lime_'+str(params['num_samples'])+'_'+str(params['att_lambda'])+'.json'
-    #with open(path_name_explanation, 'w') as fp:
+    final_dict=get_final_dict_with_lime(params,model_to_use,test_data,topk=5)
+    path_name=model_dict_params[model_to_use]
+    path_name_explanation='explanations_dicts/'+path_name.split('/')[1].split('.')[0]+'_explanation_with_lime_'+str(params['num_samples'])+'_'+str(params['att_lambda'])+'.json'
+    # with open(path_name_explanation, 'w') as fp:
     #    fp.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in final_dict))
 
+
+
+    # 1) ensure folder exists
+    out_dir = "explanations_dicts"
+    os.makedirs(out_dir, exist_ok=True)
+
+    # 2) build a clear filename
+    fname = f"{model_to_use}_lime_{params['num_samples']}_{params['att_lambda']}.jsonl"
+    out_path = os.path.join(out_dir, fname)
+
+    # 3) write one JSON object per line
+    with open(out_path, 'w') as fp:
+        for entry in final_dict:
+            fp.write(json.dumps(entry, cls=NumpyEncoder) + "\n")
+
+    # 4) report back to the user
+    print(f"\n✅ Wrote {len(final_dict)} explanations to {out_path}\n")
+
+    # 5) pretty–print the first two entries for a quick sanity check
+    print("Here are the first two explanations:\n")
+    print(json.dumps(final_dict[:2], cls=NumpyEncoder, indent=2))
 
 # In[ ]:
 

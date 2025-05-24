@@ -502,3 +502,103 @@ def collect_data(params):
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False)
     df = get_annotated_data(params)
     return get_training_data(df, params, tokenizer)
+
+
+##### Data collection for test data
+def get_test_data(data,params,message='text'):
+    '''input: data is a dataframe text ids labels column only'''
+    '''output: training data in the columns post_id,text (tokens) , attentions (normal) and labels'''
+    
+    if(params['bert_tokens']):
+        print('Loading BERT tokenizer...')
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False)
+    else:
+        tokenizer=None
+    
+    
+    post_ids_list=[]
+    text_list=[]
+    attention_list=[]
+    label_list=[]
+    print('total_data',len(data))
+    for index,row in tqdm(data.iterrows(),total=len(data)):
+        post_id=row['post_id']
+        annotation=row['final_label']
+        tokens_all,attention_masks=returnMask(row,params,tokenizer)
+        attention_vector= aggregate_attention(attention_masks,row, params) 
+        attention_list.append(attention_vector)
+        text_list.append(tokens_all)
+        label_list.append(annotation)
+        post_ids_list.append(post_id)
+    
+    
+    # Calling DataFrame constructor after zipping 
+    # both lists, with columns specified 
+    training_data = pd.DataFrame(list(zip(post_ids_list,text_list,attention_list,label_list)), 
+                   columns =['Post_id','Text', 'Attention' , 'Label']) 
+    
+    
+    return training_data
+
+
+
+
+
+
+
+def convert_data(test_data,params,list_dict,rational_present=True,topk=2):
+    """this converts the data to be with or without the rationals based on the previous predictions"""
+    """input: params -- input dict, list_dict -- previous predictions containing rationals
+    rational_present -- whether to keep rational only or remove them only
+    topk -- how many words to select"""
+    
+    temp_dict={}
+    for ele in list_dict:
+        temp_dict[ele['annotation_id']]=ele['rationales'][0]['soft_rationale_predictions']
+    
+    test_data_modified=[]
+    
+    for index,row in tqdm(test_data.iterrows(),total=len(test_data)):
+        try:
+            attention=temp_dict[row['Post_id']]
+        except KeyError:
+            continue
+        topk_indices = sorted(range(len(attention)), key=lambda i: attention[i])[-topk:]
+        new_text =[]
+        new_attention =[]
+        if(rational_present):
+            if(params['bert_tokens']):
+                new_attention =[0]
+                new_text = [101]
+            for i in range(len(row['Text'])):
+                if(i in topk_indices):
+                    new_text.append(row['Text'][i])
+                    new_attention.append(row['Attention'][i])
+            if(params['bert_tokens']):
+                new_attention.append(0)
+                new_text.append(102)
+        else:
+            for i in range(len(row['Text'])):
+                if(i not in topk_indices):
+                    new_text.append(row['Text'][i])
+                    new_attention.append(row['Attention'][i])
+        test_data_modified.append([row['Post_id'],new_text,new_attention,row['Label']])
+
+    df=pd.DataFrame(test_data_modified,columns=test_data.columns)
+    return df
+
+
+
+def transform_dummy_data(sentences):
+    post_id_list=['temp']*len(sentences)
+    pred_list=['normal']*len(sentences)
+    explanation_list=[]
+    sentences_list=[]
+    for i in range(len(sentences)):
+        explanation_list.append([])
+        sentences_list.append(sentences[i].split(" "))
+    df=pd.DataFrame(list(zip(post_id_list,sentences_list,pred_list,pred_list,
+                             pred_list,explanation_list,pred_list)),
+                         columns=['post_id', 'text', 'label1','label2','label3', 'rationales', 'final_label'])
+    
+    return df
