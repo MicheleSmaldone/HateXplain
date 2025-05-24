@@ -139,6 +139,7 @@ def Eval_phase(params,which_files='test',model=None,test_dataloader=None,device=
         b_labels = batch[3].to(device)
 
 
+
         # (source: https://stackoverflow.com/questions/48001598/why-do-we-need-to-call-zero-grad-in-pytorch)
         model.zero_grad()        
         outputs = model(b_input_ids,
@@ -321,6 +322,29 @@ def train_model(params,device):
             b_input_mask = batch[2].to(device)
             b_labels = batch[3].to(device)
 
+
+            # ───── ADD THIS BLOCK ─────
+            print("+++++++++++++++++++++++++++++++++++++ TRAIN MODEL ")
+            print("BATCH SHAPES:",
+            batch[0].shape, # supposed input_ids
+            batch[1].shape, # supposed att_vals
+            batch[2].shape, # supposed att_mask
+            batch[3].shape) # labels
+
+            print(" SAMPLE  att_val  stats:", 
+                batch[1].min().item(),
+                batch[1].max().item(),
+                batch[1].float().mean().item())
+            
+            # print out sums (or any other stats) of your attention_vals to see if they’re ever non-zero
+            with torch.no_grad():
+                sums = b_att_val.sum(dim=1)           # shape (batch_size,)
+                nz   = (sums > 0).sum().item()        # how many samples have any non-zero
+                print(f"[debug] step {step:4d}: attention_vals sum per example = {sums.tolist()[:5]} …, #nonzero={nz}/{len(sums)}")
+            
+            print("+++++++++++++++++++++++++++++++++++++ TRAIN MODEL ")
+
+            # ───────────────────────────
             # (source: https://stackoverflow.com/questions/48001598/why-do-we-need-to-call-zero-grad-in-pytorch)
             model.zero_grad()        
             outputs = model(b_input_ids, 
