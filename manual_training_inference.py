@@ -43,6 +43,25 @@ import ast
 
 import wandb
 
+from transformers import BertTokenizer
+import torch
+
+def visualize_rationale(input_ids, attention_vals, tokenizer, threshold=0.5):
+    """
+    Prints the sentence with tokens annotated by attention_vals (rationales).
+    """
+    tokens = tokenizer.convert_ids_to_tokens(input_ids)
+    rationales = attention_vals.tolist()
+
+    output = []
+    for tok, val in zip(tokens, rationales):
+        if val >= threshold:
+            output.append(f"[{tok}]")  # Highlight rationale tokens
+        else:
+            output.append(tok)
+    
+    print(" ".join(output))
+
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
@@ -325,6 +344,24 @@ def train_model(params,device):
             #   [1]: attention vals
             #   [2]: attention mask
             #   [3]: labels 
+            #######
+           #######
+            # print("+++++++++++++++++++++++++++++++++++++ TRAIN MODEL ++++++++++++++++++++++++++++ ")
+            # input_ids = batch[0][0]             # shape: (seq_len,)
+            # attention_vals = batch[1][0]        # shape: (seq_len,)
+            # attention_mask = batch[2][0]
+            # label = batch[3][0]
+            
+            # tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+            
+            # print("Label:", label.item())
+            # visualize_rationale(input_ids, attention_vals, tokenizer)
+            # print("Input IDs:", batch[0][0])
+            # print("Attention mask:", batch[2][0])
+            # print("Rationale mask (attention_vals):", batch[1][0])
+            # print("Label:", batch[3][0])
+            # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ ")
+
             b_input_ids = batch[0].to(device)
             b_att_val = batch[1].to(device)
             b_input_mask = batch[2].to(device)
