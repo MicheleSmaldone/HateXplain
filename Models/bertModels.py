@@ -123,6 +123,53 @@ def sparsemax_onehot_loss(z, k, mask=None, reduction="mean"):
     if reduction == "sum" : return loss.sum()
     return loss
 
+
+def sparsemax_true_loss(z, q, mask=None, reduction="mean"):
+    """
+    True sparsemax loss (Eq. 26 from the Sparsemax paper) for multi-hot targets.
+    z: logits (B, L)
+    q: rationale mask (B, L)
+    mask: attention mask (B, L)
+    """
+    B, L = z.size()
+
+    p = sparsemax_tensor(z, dim=-1)           # (B, L)
+    support = (p > 0).float()                 # (B, L)
+
+    # Compute tau (threshold for sparsemax)
+    z_sorted, _ = torch.sort(z, descending=True, dim=1)      # (B, L)
+    z_cumsum = torch.cumsum(z_sorted, dim=1)                 # (B, L)
+
+    k = torch.arange(1, L + 1, device=z.device).float().view(1, -1).expand(B, L)  # (B, L)
+    support_mask = (1 + k * z_sorted) > z_cumsum             # (B, L)
+    k_z = support_mask.sum(dim=1).clamp(min=1)               # (B,)
+    tau_idx = (k_z - 1).long().clamp(max=L - 1)              # (B,) indices to gather
+    tau = (z_cumsum.gather(1, tau_idx.view(-1, 1)) - 1) / k_z.view(-1, 1)  # (B, 1)
+    tau = tau.expand(-1, L)                                  # (B, L)
+
+    # Compute loss
+    cross_term = -(q * z).sum(dim=1)                         # (B,)
+    quad_term  = 0.5 * ((z ** 2 - tau ** 2) * support).sum(dim=1)
+    const_term = 0.5 * (q ** 2).sum(dim=1)
+    loss = cross_term + quad_term + const_term              # (B,)
+
+    if mask is not None:
+        valid = (mask.sum(dim=1) > 0).float()
+        loss = loss * valid
+        denom = valid.sum()
+    else:
+        denom = B
+
+    if reduction == "mean":
+        return loss.sum() / denom
+    elif reduction == "sum":
+        return loss.sum()
+    return loss
+
+
+
+
+
 class SC_weighted_BERT(BertPreTrainedModel):
     def __init__(self, config, params):
         super().__init__(config)
@@ -392,12 +439,19 @@ class SC_weighted_BERT(BertPreTrainedModel):
             # —— 2) sparsemax‐based loss *only* on the attention heads ——  
             loss_att = 0.0
             if self.train_att:
-                attention_idx = attention_vals.argmax(dim=1)
+                #attention_idx = attention_vals.argmax(dim=1)
+                #print("Attention indices:", attention_idx)
                 for h in range(self.num_sv_heads):
                     cls_raw = self._raw_attn[self.sv_layer][:, h, :]  # (B, L)
-                    loss_att += self.lam * sparsemax_onehot_loss(
+                    # loss_att += self.lam * sparsemax_onehot_loss(
+                    #     cls_raw,
+                    #     attention_idx,
+                    #     mask=attention_mask,
+                    #     reduction="mean"
+                    # )
+                    loss_att += self.lam * sparsemax_true_loss(
                         cls_raw,
-                        attention_idx,
+                        attention_vals,
                         mask=attention_mask,
                         reduction="mean"
                     )
