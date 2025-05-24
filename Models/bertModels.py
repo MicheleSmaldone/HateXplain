@@ -129,7 +129,7 @@ class SC_weighted_BERT(BertPreTrainedModel):
         self.num_labels   = config.num_labels
         self.weights      = params['weights']
         self.train_att    = params['train_att']
-        self.lam          = params['att_lambda']
+        #self.lam          = params['att_lambda']
         self.num_sv_heads = params['num_supervised_heads']
         self.sv_layer     = params['supervised_layer_pos']
 
@@ -143,7 +143,15 @@ class SC_weighted_BERT(BertPreTrainedModel):
         self._raw_attn = {}
 
         # select layers from params or fallback to single sv_layer
-        supervise_layers = params.get('supervise_layers', [self.sv_layer])
+        self.supervise_layers = params.get('supervise_layers', [self.sv_layer])
+        
+        raw_lams = params['att_lambda']
+        
+        if isinstance(raw_lams, (list, tuple)):
+            assert len(raw_lams) == len(self.supervise_layers), (f"Expected {len(self.supervise_layers)} lambdas, got {len(raw_lams)}")
+            self.layer_lambdas = list(raw_lams)
+        else: 
+            self.layer_lambdas = [raw_lams] * len(self.supervise_layers)
 
         def make_raw_cls_hook(layer_idx):
             # def hook(module, inputs, outputs):
@@ -183,7 +191,7 @@ class SC_weighted_BERT(BertPreTrainedModel):
                 self._raw_attn[layer_idx] = scores[:, :, 0, :]
             return hook
 
-        for L in supervise_layers:
+        for L in self.supervise_layers:
             self.bert.encoder.layer[L].attention.self.register_forward_hook(
                 make_raw_cls_hook(L)
             )
@@ -393,18 +401,23 @@ class SC_weighted_BERT(BertPreTrainedModel):
             loss_att = 0.0
             if self.train_att:
                 attention_idx = attention_vals.argmax(dim=1)
-                for h in range(self.num_sv_heads):
-                    cls_raw = self._raw_attn[self.sv_layer][:, h, :]  # (B, L)
-                    loss_att += self.lam * sparsemax_onehot_loss(
-                        cls_raw,
-                        attention_idx,
-                        mask=attention_mask,
-                        reduction="mean"
-                    )
+                print(self.layer_lambdas)
+                
+                for layer_idx, lam in zip(self.supervise_layers, self.layer_lambdas):
+                    heads_scores = self._raw_attn[layer_idx]
+                    for h in range(self.num_sv_heads):
+                        cls_raw = heads_scores[:, h, :]
+                        loss_att += lam * sparsemax_onehot_loss(
+                            cls_raw,
+                            attention_idx,
+                            mask=attention_mask,
+                            reduction="mean"
+                        )
+                
 
 
             # combine them:
-            loss = cls_loss + loss_att
+            loss = cls_loss + loss_att 
 
             # sanity‐checks
             if torch.isnan(cls_loss):

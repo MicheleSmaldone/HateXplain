@@ -546,7 +546,14 @@ def Merge(dict1, dict2,dict3, dict4):
     res = {**dict1, **dict2,**dict3, **dict4} 
     return res 
 
+
 params = Merge(params_data,common_hp,params_bert,params_other)
+
+layer_list = [7, 9, 11]
+lams = [0.9 ** 3, 0.9 ** 2, 0.9]
+
+params['supervise_layers'] = layer_list
+params['att_lambda'] = lams
 
 
 dict_data_folder={
