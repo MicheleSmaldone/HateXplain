@@ -206,17 +206,29 @@ def save_normal_model(model, params):
 
 
     
-def save_bert_model(model,tokenizer,params):
-        output_dir = 'Saved/'+params['path_files']+'_'
-        if(params['train_att']):
-            if(params['att_lambda']>=1):
-                params['att_lambda']=int(params['att_lambda'])
+def save_bert_model(model,tokenizer,params, best = True):
+        if best:
+            output_dir = 'Saved/'+params['path_files']+'_'
+            if(params['train_att']):
+                if(params['att_lambda']>=1):
+                    params['att_lambda']=int(params['att_lambda'])
 
-            output_dir =  output_dir+str(params['supervised_layer_pos'])+'_'+str(params['num_supervised_heads'])+'_'+str(params['num_classes'])+'_'+str(params['att_lambda'])+'/'
-            
+                output_dir =  output_dir+str(params['supervised_layer_pos'])+'_'+str(params['num_supervised_heads'])+'_'+str(params['num_classes'])+'_'+str(params['att_lambda'])+'/'
+                
+            else:
+                output_dir=output_dir+'_'+str(params['num_classes'])+'/'
+            print(output_dir)
         else:
-            output_dir=output_dir+'_'+str(params['num_classes'])+'/'
-        print(output_dir)
+            output_dir = 'Saved_last/'+params['path_files']+'_'
+            if(params['train_att']):
+                if(params['att_lambda']>=1):
+                    params['att_lambda']=int(params['att_lambda'])
+
+                output_dir =  output_dir+str(params['supervised_layer_pos'])+'_'+str(params['num_supervised_heads'])+'_'+str(params['num_classes'])+'_'+str(params['att_lambda'])+'/'
+                
+            else:
+                output_dir=output_dir+'_'+str(params['num_classes'])+'/'
+            print(output_dir)
         # Create output directory if needed
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)

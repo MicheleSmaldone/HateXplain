@@ -469,6 +469,27 @@ def train_model(params,device):
             else:
                 print("Saving model")
                 save_normal_model(model,params)
+        
+        if(epoch_i == (params['epochs'] -1)):
+            print(val_fscore,best_val_fscore)
+            best_val_fscore=val_fscore
+            best_test_fscore=test_fscore
+            best_val_roc_auc = val_roc_auc
+            best_test_roc_auc = test_roc_auc
+            
+            
+            #best_val_precision = val_precision
+            #best_test_precision = test_precision
+            #best_val_recall = val_recall
+            #best_test_recall = test_recall
+            
+            if(params['bert_tokens']):
+                print('Loading BERT tokenizer...')
+                tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False)
+                save_bert_model(model,tokenizer,params, False)
+            else:
+                print("Saving model")
+                save_normal_model(model,params)
 
     #if(params['logging']=='no'):
         # neptune.log_metric('best_val_fscore',best_val_fscore)
@@ -653,8 +674,8 @@ if __name__=='__main__':
         
         
     #### Few handy keys that you can directly change.
-    params['variance']=1
-    params['epochs']=5
+    params['variance']=5
+    params['epochs']= 10
     params['to_save']=True
     params['num_classes']=3
     params['data_file']=dict_data_folder[str(params['num_classes'])]['data_file']

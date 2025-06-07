@@ -115,12 +115,12 @@ def combine_features(tuple_data, params, is_train=False):
 
 
     # --- DEBUG BLOCK: check raw attention vectors before padding ---
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
-    print("  sample raw att_vals_list[0][:10]:", att_vals_list[0][:10])
-    print("  sum raw att_vals_list[0]:", sum(att_vals_list[0]))
-    print("  dtype raw att_vals_list:", type(att_vals_list[0][0]))
-    nonzero_counts = [sum(1 for x in v if x!=0) for v in att_vals_list[:5]]
-    print("  nonzero count in first 5 samples:", nonzero_counts)
+    # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
+    # print("  sample raw att_vals_list[0][:10]:", att_vals_list[0][:10])
+    # print("  sum raw att_vals_list[0]:", sum(att_vals_list[0]))
+    # print("  dtype raw att_vals_list:", type(att_vals_list[0][0]))
+    # nonzero_counts = [sum(1 for x in v if x!=0) for v in att_vals_list[:5]]
+    # print("  nonzero count in first 5 samples:", nonzero_counts)
     # ------------------------------------------------------------------
 
     # encode labels
@@ -145,9 +145,9 @@ def combine_features(tuple_data, params, is_train=False):
                               dtype=torch.float)
 
     # --- DEBUG BLOCK: after padding ---
-    print("  after padding att_vals[0][:10]:", att_vals[0][:10].tolist())
-    print("  sum padded att_vals[0]:", att_vals[0].sum().item())
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
+    # print("  after padding att_vals[0][:10]:", att_vals[0][:10].tolist())
+    # print("  sum padded att_vals[0]:", att_vals[0].sum().item())
+    # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combine_features DEBUG:")
 
     # ------------------------------------------------------------------
 
