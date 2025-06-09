@@ -50,6 +50,8 @@ dict_data_folder={
 model_dict_params={
     'bert':'best_model_json/bestModel_bert_base_uncased_Attn_train_FALSE.json',
     'bert_supervised':'best_model_json/bestModel_bert_base_uncased_Attn_train_TRUE.json',
+    'bert_sparsemax':'best_model_json/bestModel_bert_sparsemax.json',
+    'bert_softmax':'best_model_json/bestModel_bert_softmax.json',
     'birnn':'best_model_json/bestModel_birnn.json',
     'cnngru':'best_model_json/bestModel_cnn_gru.json',
     'birnn_att':'best_model_json/bestModel_birnnatt.json',
@@ -400,7 +402,7 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-    
+
 if __name__=='__main__': 
     my_parser = argparse.ArgumentParser(description='Which model to use')
     
@@ -449,7 +451,7 @@ if __name__=='__main__':
     fix_the_random(seed_val = params['random_seed'])
     #test_data=get_test_data(temp_read,params,message='text')
         # grab only the first 10 rows for a quick smoke test
-    test_data = get_test_data(temp_read, params, message='text').iloc[:3].reset_index(drop=True)
+    test_data = get_test_data(temp_read, params, message='text').iloc[:1000]#.reset_index(drop=True)
 
     
     save_hidden_states_for_visualization(params, model_to_use, test_data, topk=5,rational=False)

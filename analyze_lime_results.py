@@ -230,46 +230,175 @@
 # #     4 | offensive      | offensive     
 
 
-import os, pickle, numpy as np
+# import os, pickle, numpy as np
 
-DATA_DIR   = "Data"
-SOFT_DIR   = "Total_data_bert_softmax_1_128_3"
-SPARSE_DIR = "Total_data_bert_sparsemax_1_128_3"
-SPLIT      = "train_data.pickle"
+# DATA_DIR   = "Data"
+# SOFT_DIR   = "Total_data_bert_softmax_1_128_3"
+# SPARSE_DIR = "Total_data_bert_sparsemax_1_128_3"
+# SPLIT      = "train_data.pickle"
 
-def load_scores(folder):
-    with open(os.path.join(DATA_DIR, folder, SPLIT), "rb") as f:
-        data = pickle.load(f)
-    # extract only the attention vectors
-    return [scores for _, scores, _ in data]
+# def load_scores(folder):
+#     with open(os.path.join(DATA_DIR, folder, SPLIT), "rb") as f:
+#         data = pickle.load(f)
+#     # extract only the attention vectors
+#     return [scores for _, scores, _ in data]
 
-soft_scores   = load_scores(SOFT_DIR)
-sparse_scores = load_scores(SPARSE_DIR)
+# soft_scores   = load_scores(SOFT_DIR)
+# sparse_scores = load_scores(SPARSE_DIR)
 
-def summarize(scores_list):
-    n_vecs = len(scores_list)
-    lengths = [len(s) for s in scores_list]
-    # number of nonzeros per vector
-    nonzeros = [np.count_nonzero(s) for s in scores_list]
-    # top-1 mass
-    top1 = [np.max(s) for s in scores_list]
-    # fraction of mass in top-3
-    mass_top3 = []
-    for s in scores_list:
-        i = np.argsort(s)[-3:]
-        mass_top3.append(np.sum(np.array(s)[i]))
-    return {
-        "n_posts": n_vecs,
-        "avg_length": np.mean(lengths),
-        "avg_nonzero": np.mean(nonzeros),
-        "avg_top1": np.mean(top1),
-        "avg_mass_top3": np.mean(mass_top3),
-    }
+# def summarize(scores_list):
+#     n_vecs = len(scores_list)
+#     lengths = [len(s) for s in scores_list]
+#     # number of nonzeros per vector
+#     nonzeros = [np.count_nonzero(s) for s in scores_list]
+#     # top-1 mass
+#     top1 = [np.max(s) for s in scores_list]
+#     # fraction of mass in top-3
+#     mass_top3 = []
+#     for s in scores_list:
+#         i = np.argsort(s)[-3:]
+#         mass_top3.append(np.sum(np.array(s)[i]))
+#     return {
+#         "n_posts": n_vecs,
+#         "avg_length": np.mean(lengths),
+#         "avg_nonzero": np.mean(nonzeros),
+#         "avg_top1": np.mean(top1),
+#         "avg_mass_top3": np.mean(mass_top3),
+#     }
 
-soft_summary   = summarize(soft_scores)
-sparse_summary = summarize(sparse_scores)
+# soft_summary   = summarize(soft_scores)
+# sparse_summary = summarize(sparse_scores)
 
-print("Metric          |   softmax   |   sparsemax")
-print("-"*43)
-for k in soft_summary:
-    print(f"{k:15s} | {soft_summary[k]:10.3f} | {sparse_summary[k]:10.3f}")
+# print("Metric          |   softmax   |   sparsemax")
+# print("-"*43)
+# for k in soft_summary:
+#     print(f"{k:15s} | {soft_summary[k]:10.3f} | {sparse_summary[k]:10.3f}")
+
+#!/usr/bin/env python
+import json
+import argparse
+from collections import defaultdict
+import numpy as np
+import pandas as pd
+from sklearn.metrics import precision_recall_fscore_support
+
+def load_json(path):
+    with open(path, 'r') as f:
+        return json.load(f)
+
+def load_lime(path):
+    with open(path, 'r') as f:
+        for line in f:
+            yield json.loads(line)
+
+def majority_label(annots):
+    labels = [a['label'] for a in annots]
+    # simple majority vote
+    return max(set(labels), key=labels.count)
+
+def combine_gold_rationales(rationale_lists):
+    if not rationale_lists:
+        return []
+    # OR across annotator masks
+    return [int(any(col)) for col in zip(*rationale_lists)]
+
+def mask_from_spans(spans, length):
+    m = [0]*length
+    for s in spans:
+        start, end = s['start_token'], s['end_token']
+        # end is exclusive in our LIME output
+        for i in range(start, min(end, length)):
+            m[i] = 1
+    return m
+
+def main():
+    p = argparse.ArgumentParser(
+        description="Full LIME + data analyzer for HateXplain outputs"
+    )
+    p.add_argument("--dataset-json",   default="Data/dataset.json",
+                   help="Data/dataset.json (mapping post_id → record)")
+    p.add_argument("--divisions-json",default="Data/post_id_divisions.json",
+                   help="Data/post_id_divisions.json (contains train/val/test lists)")
+    p.add_argument("--classes-npy",    default="Data/classes.npy",
+                   help=".npy file giving class names in index order")
+    p.add_argument("--lime-jsonl",    default="explanations_dicts/bert_sparsemax_lime_1000_0.001.jsonl",
+                   help="Your LIME output, e.g. explanations_dicts/bert_sparsemax_lime_300_0.001.jsonl")
+    args = p.parse_args()
+
+    # 1) Load everything
+    data       = load_json(args.dataset_json)
+    divs       = load_json(args.divisions_json)
+    class_names= np.load(args.classes_npy)
+    test_ids   = set(divs['test'])
+
+    # 2) Prepare accumulators
+    suff_drops = []
+    comp_drops = []
+    overlaps   = []  # list of (p,r,f1)
+    token_weights = defaultdict(list)
+
+    # 3) Iterate LIME records
+    for rec in load_lime(args.lime_jsonl):
+        pid = rec["annotation_id"]
+        if pid not in test_ids:
+            continue
+        record = data.get(pid)
+        if record is None:
+            print(f"⚠️  {pid} not in dataset – skipping")
+            continue
+
+        tokens = record["post_tokens"]
+        length = len(tokens)
+
+        # gold label → index
+        gold_label = majority_label(record["annotators"])
+        gold_idx   = int(np.where(class_names==gold_label)[0][0])
+
+        # scores
+        orig_scores = rec["classification_scores"]
+        suff_scores = rec["sufficiency_classification_scores"]
+        comp_scores = rec["comprehensiveness_classification_scores"]
+
+        # drop in gold-class confidence
+        suff_drops.append(orig_scores[gold_label] - suff_scores[gold_label])
+        comp_drops.append(orig_scores[gold_label] - comp_scores[gold_label])
+
+        # ground‐truth rationale mask
+        gold_mask = combine_gold_rationales(record["rationales"])
+
+        # predicted mask from the spans
+        spans = rec["rationales"][0]["hard_rationale_predictions"]
+        pred_mask = mask_from_spans(spans, length)
+
+        # compute overlap
+        p,r,f1,_ = precision_recall_fscore_support(
+            gold_mask, pred_mask, average='binary', zero_division=0
+        )
+        overlaps.append((p,r,f1))
+
+        # collect soft weights (drop CLS/SEP)
+        soft = rec["rationales"][0]["soft_rationale_predictions"]
+        soft = soft[1:1+length]
+        for tok, w in zip(tokens, soft):
+            token_weights[tok].append(w)
+
+    # 4) Summarize results
+    print("\n→ Sufficiency drop (gold class):")
+    print(f"   mean={np.mean(suff_drops):.4f}, std={np.std(suff_drops):.4f}")
+    print("→ Comprehensiveness drop (gold class):")
+    print(f"   mean={np.mean(comp_drops):.4f}, std={np.std(comp_drops):.4f}")
+
+    if overlaps:
+        ps, rs, fs = zip(*overlaps)
+        print("\n→ Rationale overlap vs. gold:")
+        print(f"   precision={np.mean(ps):.4f}, recall={np.mean(rs):.4f}, F1={np.mean(fs):.4f}")
+
+    # 5) Top tokens by average weight
+    avg_w = {tok: np.mean(ws) for tok, ws in token_weights.items()}
+    top20 = sorted(avg_w.items(), key=lambda kv: kv[1], reverse=True)[:20]
+    print("\n→ Top 20 tokens globally by avg LIME weight:")
+    for tok, w in top20:
+        print(f"   {tok:>15} : {w:.4f}")
+
+if __name__ == "__main__":
+    main()
