@@ -451,7 +451,7 @@ if __name__=='__main__':
     fix_the_random(seed_val = params['random_seed'])
     #test_data=get_test_data(temp_read,params,message='text')
         # grab only the first 10 rows for a quick smoke test
-    test_data = get_test_data(temp_read, params, message='text').iloc[:1000]#.reset_index(drop=True)
+    test_data = get_test_data(temp_read, params, message='text').iloc[:300]#.reset_index(drop=True)
 
     
     save_hidden_states_for_visualization(params, model_to_use, test_data, topk=5,rational=False)

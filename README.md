@@ -1,3 +1,98 @@
+
+
+
+# Sparsemax-Supervised Attention for Explainable Hate Speech Detection
+
+
+This repository is a fork of the original [HateXplain](https://github.com/punyajoy/HateXplain) project. The main addition is a BERT based classifier where the attention weights are normalised with **sparsemax** instead of the usual softmax. Sparsemax encourages sparser attention distributions which can make rationales easier to interpret.
+
+The dataset and preprocessing utilities remain unchanged from the upstream repository. Below we highlight the files specific to the sparsemax variant and how to train or evaluate the model.
+
+
+## environment (docker or conda)
+
+once you submit an interactive job with the docker image built from `./ee559_docker_env` on runai you need to install the following, or anything else is asked after you launch training.
+
+'''
+bash download_glove.sh
+
+python -m spacy download en_core_web_sm
+pip install lime
+pip install wandb
+'''
+
+we also made a standalone conda environment in case is preferred `environment-conda-only.yml`
+
+
+## Branches and key Files
+
+### for the master branch
+`master`
+
+- `Models/bertModels.py` – implements `SC_weighted_BERT` with a sparsemax option (`sparsemax_tensor` and `sparsemax_true_loss`).
+- `best_model_json/bestModel_bert_sparsemax.json` – example hyper‑parameters for training the sparsemax model.
+- `test_inference.py` – supports `--variant softmax|sparsemax` for quick testing.
+- `run_lime.sh` – computes explanation metrics on both softmax and sparsemax models using LIME.
+
+Refer to the main `README.md` for a complete overview of the dataset and other directories.
+
+### for the softmax branch
+`softmax_branch`
+
+it's a branch with the original softmax, to test the results with the same parameters we have ran
+
+### for the multi sparsemax branch
+in `multi_sparsemax_branch` and `multi_sparsemax_branch2` there where attempts to implement sparsemax loss at every attention layer.
+
+## Training
+
+Use the provided parameter file to reproduce our configuration. The `attention_lambda` argument controls the weight of the supervised attention loss.
+
+```bash
+python manual_training_inference.py ./best_model_json/bestModel_bert_sparsemax.json  false 0.001
+```
+
+This will train `SC_weighted_BERT` with sparsemax attention on a GPU if available.
+
+## Inference
+
+After training, you can run inference and visualise the most attended tokens:
+
+```bash
+python test_inference.py
+```
+you need the folder with the model.safetensors outputted by the training.
+
+'''
+./bert-base-uncased_11_6_3_0.001
+- config.json
+- model.safetensors
+- special_tokens_map.json
+- tokenizer_config.json
+- vocab.txt
+'''
+
+the path of the folder is put at the top of `test_inference.py`
+
+## LIME Evaluation
+
+`scripts/run_lime.sh` evaluates explanation quality via the LIME toolkit for both softmax and sparsemax models. The script expects trained checkpoints named `bert_supervised` and `bert_sparsemax` in the working directory.
+
+```bash
+bash run_lime.sh
+```
+note that the number of samples is decided at line 454 of `testing_with_lime` for the report results, we used 1000. now is set to 300.
+
+
+The results will be stored in `lime_results/` and can be compared using `analyze_lime_ttest.py`.
+
+---
+---
+---
+---
+
+# original readme:
+
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fpunyajoy%2FHateXplain&count_bg=%2379C83D&title_bg=%23555555&icon=expertsexchange.svg&icon_color=%23E7E7E7&title=Visits&edge_flat=false)](https://hits.seeyoufarm.com)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/hatexplain-a-benchmark-dataset-for/hate-speech-detection-on-hatexplain)](https://paperswithcode.com/sota/hate-speech-detection-on-hatexplain?p=hatexplain-a-benchmark-dataset-for)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
