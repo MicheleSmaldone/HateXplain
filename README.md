@@ -13,13 +13,19 @@ The dataset and preprocessing utilities remain unchanged from the upstream repos
 
 once you submit an interactive job with the docker image built from `./ee559_docker_env` on runai you need to install the following, or anything else is asked after you launch training.
 
-'''
+```bash
+
 bash download_glove.sh
 
 python -m spacy download en_core_web_sm
-pip install lime
+
 pip install wandb
-'''
+
+pip install lime # only for testing with lime
+
+```
+
+
 
 we also made a standalone conda environment in case is preferred `environment-conda-only.yml`
 
